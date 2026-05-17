@@ -109,6 +109,21 @@
       ]
     },
     {
+      "id": "static-checks-emits-coverage-blocks",
+      "kind": "golden",
+      "fixture": "../skills/audit/scripts/static_checks.py",
+      "must_contain": [
+        "detect_coverage_tool",
+        "audit_source_test_mapping",
+        "_enumerate_eval_targets",
+        "_eval_quality_probes",
+        "uncovered_items",
+        "quality_issues",
+        "coverage_ratio",
+        "uncovered_modules"
+      ]
+    },
+    {
       "id": "renderer-switches-on-shape",
       "kind": "golden",
       "fixture": "../skills/audit/scripts/render_report.py",
@@ -117,6 +132,30 @@
         "render_skill_quality",
         "render_prompt_hygiene",
         "agent-harness"
+      ]
+    },
+    {
+      "id": "renderer-shows-coverage",
+      "kind": "golden",
+      "fixture": "../skills/audit/scripts/render_report.py",
+      "must_contain": [
+        "coverage_tool",
+        "source_test_mapping",
+        "Item coverage",
+        "Case quality issues",
+        "uncovered_modules"
+      ]
+    },
+    {
+      "id": "audit-skill-coverage-grading",
+      "kind": "golden",
+      "fixture": "../skills/audit/SKILL.md",
+      "must_contain": [
+        "Tests coverage",
+        "coverage_tool == null",
+        "coverage_ratio",
+        "uncovered_items",
+        "quality_issues"
       ]
     },
     {

@@ -828,6 +828,40 @@ def render_tests(tests: dict) -> str:
             return '<span class="chip bad">none detected</span>'
         return "".join(f'<span class="chip {tone}">{e(x)}</span>' for x in items)
 
+    cov_tool = tests.get("coverage_tool")
+    if cov_tool:
+        thr = cov_tool.get("threshold")
+        thr_txt = f" · threshold {thr}%" if isinstance(thr, int) else ""
+        cov_chip = (
+            f'<span class="chip ok">coverage tool · {e(cov_tool.get("tool", "?"))}'
+            f' ({e(cov_tool.get("source", "?"))})' + thr_txt + '</span>'
+        )
+    else:
+        cov_chip = '<span class="chip warn">coverage tool · not detected</span>'
+
+    mapping = tests.get("source_test_mapping") or {}
+    n_src = int(mapping.get("n_source") or 0)
+    n_w   = int(mapping.get("n_with_test") or 0)
+    ratio = float(mapping.get("coverage_ratio") or 0.0)
+    uncov = mapping.get("uncovered_modules") or []
+    if n_src == 0:
+        map_chip = '<span class="chip warn">source ↔ test · no test files found</span>'
+        map_table = ""
+    else:
+        tone = "ok" if ratio >= 0.7 else ("warn" if ratio >= 0.3 else "bad")
+        map_chip = (
+            f'<span class="chip {tone}">source ↔ test · {n_w}/{n_src} '
+            f'({int(ratio*100)}%)</span>'
+        )
+        if uncov:
+            rows = "".join(f"<tr><td>{e(m)}</td></tr>" for m in uncov)
+            map_table = (
+                f"<h3>Uncovered source modules (first {len(uncov)})</h3>"
+                f"<table><thead><tr><th>Path</th></tr></thead><tbody>{rows}</tbody></table>"
+            )
+        else:
+            map_table = ""
+
     return f"""
 <section id="tests">
   <h2>Tests &amp; harness</h2>
@@ -835,6 +869,8 @@ def render_tests(tests: dict) -> str:
   <h3>Linters</h3><div class="chiprow">{chip_row(tests.get("linters", []), "ok")}</div>
   <h3>Typecheckers</h3><div class="chiprow">{chip_row(tests.get("typecheckers", []), "ok")}</div>
   <h3>CI</h3><div class="chiprow">{chip_row(tests.get("ci_configs", []), "ok")}</div>
+  <h3>Coverage</h3><div class="chiprow">{cov_chip}{map_chip}</div>
+  {map_table}
 </section>
 """.strip()
 
@@ -881,25 +917,67 @@ def render_evals(ev: dict) -> str:
     n_files = int(ev.get("n_files") or 0)
     n_cases = int(ev.get("n_total_cases") or 0)
     files = ev.get("files") or []
+    coverage = ev.get("coverage") or []
+    uncovered = ev.get("uncovered_items") or []
+    quality_issues = ev.get("quality_issues") or []
     if not has_dir:
         chips = '<span class="chip bad">no <code>evals/</code> directory</span>'
         body = f'<div class="chiprow">{chips}</div>'
-    else:
-        chips = (
-            f'<span class="chip ok">evals/ · present</span>'
-            f'<span class="chip {"ok" if n_files else "bad"}">case files · {n_files}</span>'
-            f'<span class="chip {"ok" if n_cases else "warn"}">total cases · {n_cases}</span>'
+        return f'<section id="evals"><h2>Evals</h2>{body}</section>'
+    chips = (
+        f'<span class="chip ok">evals/ · present</span>'
+        f'<span class="chip {"ok" if n_files else "bad"}">case files · {n_files}</span>'
+        f'<span class="chip {"ok" if n_cases else "warn"}">total cases · {n_cases}</span>'
+    )
+    if coverage:
+        n_cov = sum(1 for c in coverage if c.get("covered"))
+        cov_tone = "ok" if not uncovered else ("warn" if len(uncovered) <= len(coverage) // 2 else "bad")
+        chips += (
+            f'<span class="chip {cov_tone}">item coverage · {n_cov}/{len(coverage)}</span>'
         )
-        body = f'<div class="chiprow">{chips}</div>'
-        if files:
-            rows = "".join(
-                f"<tr><td>{e(f['path'])}</td><td class='num'>{int(f.get('n_cases') or 0)}</td></tr>"
-                for f in files
-            )
-            body += (
-                f"<h3>Files</h3><table><thead><tr><th>Path</th>"
-                f"<th class='num'>Cases</th></tr></thead><tbody>{rows}</tbody></table>"
-            )
+    q_tone = "ok" if not quality_issues else "warn"
+    chips += f'<span class="chip {q_tone}">case quality issues · {len(quality_issues)}</span>'
+    body = f'<div class="chiprow">{chips}</div>'
+    if files:
+        rows = "".join(
+            "<tr>"
+            f"<td>{e(f['path'])}</td>"
+            f"<td>{e(f.get('item') or '—')}</td>"
+            f"<td class='num'>{int(f.get('n_cases') or 0)}</td>"
+            f"<td>{'yes' if f.get('has_triggers') else 'no'}</td>"
+            f"<td class='num'>{int(f.get('n_positive') or 0)}/{int(f.get('n_negative') or 0)}</td>"
+            f"<td class='num'>{int(f.get('n_output_assertions') or 0)}</td>"
+            f"<td class='num'>{len(f.get('fixtures_missing') or [])}</td>"
+            "</tr>"
+            for f in files
+        )
+        body += (
+            f"<h3>Files</h3><table><thead><tr>"
+            f"<th>Path</th><th>Item</th><th class='num'>Cases</th>"
+            f"<th>Triggers</th><th class='num'>+/-</th>"
+            f"<th class='num'>Output</th><th class='num'>Missing fixtures</th>"
+            f"</tr></thead><tbody>{rows}</tbody></table>"
+        )
+    if coverage:
+        rows = "".join(
+            f"<tr><td>{e(c['item'])}</td><td>{'✓' if c.get('covered') else '✗'}</td></tr>"
+            for c in coverage
+        )
+        body += (
+            f"<h3>Item coverage</h3><table><thead><tr>"
+            f"<th>Plugin / skill</th><th>Eval present</th>"
+            f"</tr></thead><tbody>{rows}</tbody></table>"
+        )
+    if quality_issues:
+        rows = "".join(
+            f"<tr><td>{e(q['path'])}</td><td>{e(', '.join(q.get('problems') or []))}</td></tr>"
+            for q in quality_issues
+        )
+        body += (
+            f"<h3>Case quality issues</h3><table><thead><tr>"
+            f"<th>Path</th><th>Problems</th>"
+            f"</tr></thead><tbody>{rows}</tbody></table>"
+        )
     return f'<section id="evals"><h2>Evals</h2>{body}</section>'
 
 

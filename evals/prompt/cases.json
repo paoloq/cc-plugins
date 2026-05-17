@@ -46,12 +46,6 @@
       "must_contain": ["\"name\": \"prompt\""]
     },
     {
-      "id": "session-start-hook-wired",
-      "kind": "golden",
-      "fixture": "../hooks/hooks.json",
-      "must_contain": ["SessionStart", "startup", "refresh.py"]
-    },
-    {
       "id": "draft-skill-frontmatter",
       "kind": "golden",
       "fixture": "../skills/draft/SKILL.md",

@@ -300,6 +300,8 @@ class Tests:
     linters: list[str] = field(default_factory=list)
     typecheckers: list[str] = field(default_factory=list)
     ci_configs: list[str] = field(default_factory=list)
+    coverage_tool: dict | None = None
+    source_test_mapping: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -336,6 +338,9 @@ class Evals:
     files: list[dict] = field(default_factory=list)
     n_files: int = 0
     n_total_cases: int = 0
+    coverage: list[dict] = field(default_factory=list)
+    uncovered_items: list[str] = field(default_factory=list)
+    quality_issues: list[dict] = field(default_factory=list)
 
 
 @dataclass
@@ -401,12 +406,77 @@ def detect_repo_shape(repo: Path, files: list[Path], profile: RepoProfile) -> Re
     return RepoShape(shape=shape, signals=signals)
 
 
+def _enumerate_eval_targets(repo: Path) -> list[str]:
+    """Return the list of plugin- and skill-level paths that ought to be
+    covered by an eval. Per-plugin: `plugins/<name>`. Per-skill:
+    `plugins/<name>/skills/<skill>`. Order: plugins first (sorted), then
+    their skills (sorted)."""
+    plugins_root = repo / "plugins"
+    if not plugins_root.is_dir():
+        return []
+    targets: list[str] = []
+    for plugin_dir in sorted(p for p in plugins_root.iterdir() if p.is_dir()):
+        plugin_rel = f"plugins/{plugin_dir.name}"
+        targets.append(plugin_rel)
+        skills_root = plugin_dir / "skills"
+        if not skills_root.is_dir():
+            continue
+        for skill_dir in sorted(s for s in skills_root.iterdir() if s.is_dir()):
+            targets.append(f"{plugin_rel}/skills/{skill_dir.name}")
+    return targets
+
+
+def _eval_quality_probes(data: dict, cases_path: Path, repo: Path) -> dict:
+    """Inspect a parsed cases.json for trigger / output coverage and resolve
+    any referenced fixture paths. Fixtures are resolved against the plugin's
+    virtual `<repo>/<item>/evals/` root when `item` is set, else against the
+    cases.json's own directory."""
+    triggers = data.get("triggers") if isinstance(data, dict) else None
+    pos = neg = 0
+    if isinstance(triggers, dict):
+        pos = len(triggers.get("positive") or []) if isinstance(triggers.get("positive"), list) else 0
+        neg = len(triggers.get("negative") or []) if isinstance(triggers.get("negative"), list) else 0
+    outputs = data.get("output") or data.get("outputs") if isinstance(data, dict) else None
+    n_output = len(outputs) if isinstance(outputs, list) else 0
+    item_val = data.get("item") if isinstance(data, dict) else None
+    if isinstance(item_val, str) and item_val.strip():
+        base = (repo / item_val.strip().rstrip("/") / "evals").resolve()
+    else:
+        base = cases_path.parent
+    fixtures_missing: list[str] = []
+    if isinstance(outputs, list):
+        for item in outputs:
+            if not isinstance(item, dict):
+                continue
+            refs: list[str] = []
+            for key in ("fixture", "fixtures"):
+                v = item.get(key)
+                if isinstance(v, str):
+                    refs.append(v)
+                elif isinstance(v, list):
+                    refs.extend(x for x in v if isinstance(x, str))
+            for ref in refs:
+                resolved = (base / ref).resolve()
+                if not resolved.exists():
+                    fixtures_missing.append(ref)
+    return {
+        "has_triggers": isinstance(triggers, dict) and (pos > 0 or neg > 0),
+        "n_positive": pos,
+        "n_negative": neg,
+        "has_output": n_output > 0,
+        "n_output_assertions": n_output,
+        "fixtures_missing": sorted(set(fixtures_missing)),
+    }
+
+
 def audit_evals(repo: Path) -> Evals:
     root = repo / "evals"
     if not root.is_dir():
         return Evals()
     files: list[dict] = []
     n_cases_total = 0
+    covered_items: set[str] = set()
+    quality_issues: list[dict] = []
     for p in root.rglob("*.json"):
         if any(part in EXCLUDE_DIRS for part in p.parts):
             continue
@@ -423,10 +493,57 @@ def audit_evals(repo: Path) -> Evals:
                 if isinstance(v, list):
                     n_cases = len(v)
                     break
-        files.append({"path": str(p.relative_to(repo)), "n_cases": n_cases})
+        rel = str(p.relative_to(repo))
+        probes: dict = {}
+        item_ref: str | None = None
+        if isinstance(data, dict):
+            probes = _eval_quality_probes(data, p, repo)
+            item_val = data.get("item")
+            if isinstance(item_val, str) and item_val.strip():
+                item_ref = item_val.strip().rstrip("/")
+                covered_items.add(item_ref)
+        files.append({
+            "path": rel,
+            "n_cases": n_cases,
+            "item": item_ref,
+            **probes,
+        })
         n_cases_total += n_cases
+        problems: list[str] = []
+        if probes:
+            if not probes.get("has_triggers"):
+                problems.append("no-triggers")
+            if not probes.get("has_output"):
+                problems.append("no-output-assertions")
+            if probes.get("fixtures_missing"):
+                problems.append("fixtures-missing")
+        if problems:
+            quality_issues.append({"path": rel, "problems": problems})
     files.sort(key=lambda f: f["path"])
-    return Evals(has_dir=True, files=files, n_files=len(files), n_total_cases=n_cases_total)
+    targets = _enumerate_eval_targets(repo)
+    coverage: list[dict] = []
+    uncovered: list[str] = []
+    for t in targets:
+        # A target is covered by an eval whose `item` is the target itself,
+        # the parent plugin (covers all its skills), or any descendant of
+        # the target (a per-skill eval covers its parent plugin too).
+        is_covered = False
+        for c in covered_items:
+            if c == t or t.startswith(c + "/") or c.startswith(t + "/"):
+                is_covered = True
+                break
+        coverage.append({"item": t, "covered": is_covered})
+        if not is_covered:
+            uncovered.append(t)
+    return Evals(
+        has_dir=True,
+        files=files,
+        n_files=len(files),
+        n_total_cases=n_cases_total,
+        coverage=coverage,
+        uncovered_items=uncovered,
+        quality_issues=quality_issues,
+    )
 
 
 _FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n", re.DOTALL)
@@ -498,6 +615,139 @@ def audit_prompt_hygiene(repo: Path, files: list[Path]) -> PromptHygiene:
             oversized.append({"path": str(p.relative_to(repo)), "lines": lines})
     oversized.sort(key=lambda o: -o["lines"])
     return PromptHygiene(n_md_files=n_files, total_lines=total_lines, oversized=oversized)
+
+
+COVERAGE_CONFIG_FILES = {
+    "coverage.py":  [".coveragerc", "pyproject.toml", "setup.cfg", "tox.ini"],
+    "c8":           [".c8rc", ".c8rc.json", "package.json"],
+    "nyc":          [".nycrc", ".nycrc.json", "package.json"],
+    "jest":         ["jest.config.js", "jest.config.ts", "jest.config.cjs", "package.json"],
+    "vitest":       ["vitest.config.js", "vitest.config.ts", "package.json"],
+}
+
+COVERAGE_TOOL_TOKENS = {
+    "coverage.py":  ["[tool.coverage", "[coverage:", "pytest-cov", "--cov"],
+    "c8":           ['"c8"', "c8 "],
+    "nyc":          ['"nyc"', "nyc "],
+    "jest":         ["--coverage", "collectCoverage", "coverageThreshold"],
+    "vitest":       ["coverage:", "vitest run --coverage", "--coverage"],
+}
+
+COVERAGE_THRESHOLD_RE = re.compile(
+    r"(?:fail[_-]under\s*=\s*|coverageThreshold[^}]*?(?:global|branches|lines|statements|functions)[^}]*?:\s*)(\d{1,3})",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def detect_coverage_tool(repo: Path) -> dict | None:
+    """Best-effort detection of a coverage-tool configuration. Returns the
+    first matching tool with the source file and any threshold we could parse;
+    None if no signal. Substring match is deliberate — `pyproject.toml` may
+    host coverage.py config under `[tool.coverage.*]` headers that a strict
+    parser would have to special-case per language."""
+    for tool, candidates in COVERAGE_CONFIG_FILES.items():
+        for fname in candidates:
+            p = repo / fname
+            if not p.is_file():
+                continue
+            text = _read_text_safe(p)
+            if not text:
+                continue
+            tokens = COVERAGE_TOOL_TOKENS[tool]
+            if not any(tok.lower() in text.lower() for tok in tokens):
+                continue
+            threshold = None
+            m = COVERAGE_THRESHOLD_RE.search(text)
+            if m:
+                try:
+                    threshold = int(m.group(1))
+                except ValueError:
+                    threshold = None
+            return {"tool": tool, "source": fname, "threshold": threshold}
+    return None
+
+
+TEST_DIR_NAMES = {"tests", "test", "__tests__", "spec", "specs"}
+SOURCE_EXTS = {".py", ".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx", ".go", ".rs", ".rb"}
+TEST_FILE_PATTERNS = (
+    re.compile(r"^test_(.+)\.py$"),
+    re.compile(r"^(.+)_test\.py$"),
+    re.compile(r"^(.+)\.test\.[a-z]+$"),
+    re.compile(r"^(.+)\.spec\.[a-z]+$"),
+    re.compile(r"^test_(.+)\.go$"),
+    re.compile(r"^(.+)_test\.go$"),
+    re.compile(r"^(.+)_spec\.rb$"),
+)
+
+
+def _is_in_test_dir(p: Path) -> bool:
+    return any(part in TEST_DIR_NAMES for part in p.parts)
+
+
+def _is_in_source_dir(p: Path, repo: Path) -> bool:
+    rel = p.relative_to(repo)
+    if rel.parts[0].startswith("."):
+        return False
+    if rel.parts[0] in EXCLUDE_DIRS:
+        return False
+    if _is_in_test_dir(rel):
+        return False
+    # Skip nested plugin/example trees that ship their own non-app code —
+    # they'd dominate the ratio with files no test could plausibly cover.
+    if "examples" in rel.parts or "fixtures" in rel.parts:
+        return False
+    return True
+
+
+def _test_stems(repo: Path, files: list[Path]) -> set[str]:
+    stems: set[str] = set()
+    for p in files:
+        try:
+            rel = p.relative_to(repo)
+        except ValueError:
+            continue
+        if not _is_in_test_dir(rel):
+            continue
+        for pat in TEST_FILE_PATTERNS:
+            m = pat.match(p.name)
+            if m:
+                stems.add(m.group(1).lower())
+                break
+    return stems
+
+
+def audit_source_test_mapping(repo: Path, files: list[Path]) -> dict:
+    """Pair source modules with detected test files by stem.
+
+    Heuristic only: covers Python / JS / TS / Go / Ruby naming conventions.
+    Reports `n_source`, `n_with_test`, `coverage_ratio`, and up to 20
+    uncovered module paths so the report stays bounded."""
+    stems = _test_stems(repo, files)
+    if not stems:
+        return {"n_source": 0, "n_with_test": 0, "coverage_ratio": 0.0,
+                "uncovered_modules": []}
+    n_source = 0
+    n_with_test = 0
+    uncovered: list[str] = []
+    for p in files:
+        if p.suffix.lower() not in SOURCE_EXTS:
+            continue
+        if not _is_in_source_dir(p, repo):
+            continue
+        n_source += 1
+        stem = p.stem.lower()
+        if stem in stems:
+            n_with_test += 1
+        else:
+            uncovered.append(str(p.relative_to(repo)))
+    ratio = (n_with_test / n_source) if n_source else 0.0
+    uncovered.sort()
+    return {
+        "n_source": n_source,
+        "n_with_test": n_with_test,
+        "coverage_ratio": round(ratio, 3),
+        "uncovered_modules": uncovered[:20],
+    }
 
 
 def list_tracked(repo: Path) -> list[Path] | None:
@@ -781,6 +1031,8 @@ def build_report(repo: Path) -> dict:
         linters=detect_signals(repo, LINT_SIGNALS),
         typecheckers=detect_signals(repo, TYPECHECK_SIGNALS),
         ci_configs=detect_ci(repo),
+        coverage_tool=detect_coverage_tool(repo),
+        source_test_mapping=audit_source_test_mapping(repo, files),
     )
     hygiene = Hygiene(
         gitignore_present=(repo / ".gitignore").exists(),
