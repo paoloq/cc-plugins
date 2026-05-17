@@ -1,0 +1,11 @@
+{
+  "name": "repo",
+  "version": "0.1.0",
+  "description": "Tools for managing and assessing a repository.",
+  "author": {
+    "name": "Paolo Arduin"
+  },
+  "homepage": "https://github.com/paoloq/cc-plugins/tree/main/plugins/repo",
+  "license": "MIT",
+  "keywords": ["repo", "audit", "readiness", "assessment"]
+}

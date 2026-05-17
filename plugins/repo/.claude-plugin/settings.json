@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(${CLAUDE_PLUGIN_ROOT}/skills/audit/scripts/audit.py:*)",
+      "Bash(ccusage:*)",
+      "Read(~/.claude/projects/**)",
+      "Read(/private/tmp/claude-*/**)"
+    ]
+  }
+}

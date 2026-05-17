@@ -21,6 +21,14 @@
       "version": "0.1.0",
       "category": "planning",
       "tags": ["spec", "planning", "draft", "task"]
+    },
+    {
+      "name": "repo",
+      "source": "./plugins/repo",
+      "description": "Repo-management tools. Ships the `audit` skill (/repo:audit) which assesses agentic readiness via static checks plus five benchmark subagents and renders a navigable HTML scorecard.",
+      "version": "0.1.0",
+      "category": "repo-management",
+      "tags": ["repo", "audit", "readiness", "assessment"]
     }
   ]
 }

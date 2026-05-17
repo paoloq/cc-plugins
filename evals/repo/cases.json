@@ -1,0 +1,132 @@
+{
+  "item": "plugins/repo",
+  "triggers": {
+    "must_match_any": [
+      "agentic readiness",
+      "assess agentic readiness",
+      "check this repo for agent readiness",
+      "/repo:audit",
+      "audit this repo"
+    ],
+    "positive": [
+      "can you assess this repo's agentic readiness?",
+      "run an agentic readiness audit on the current repo",
+      "check this repo for agent readiness and give me a scorecard",
+      "/repo:audit",
+      "audit this repo and tell me where it falls short for coding agents"
+    ],
+    "negative": [
+      "review this pull request for security issues",
+      "draft a spec for the new billing service",
+      "write a prompt that drafts a weekly status report",
+      "summarize what changed on this branch",
+      "what does the Anthropic guide say about prompt caching?",
+      "fix the failing test in tests/test_auth.py"
+    ]
+  },
+  "output": [
+    {
+      "id": "claude-plugin-manifest-present",
+      "kind": "golden",
+      "fixture": "../.claude-plugin/plugin.json",
+      "must_contain": ["\"name\": \"repo\""]
+    },
+    {
+      "id": "settings-pre-approves-script",
+      "kind": "golden",
+      "fixture": "../.claude-plugin/settings.json",
+      "must_contain": [
+        "${CLAUDE_PLUGIN_ROOT}/skills/audit/scripts/audit.py",
+        "Read(~/.claude/projects/**)",
+        "Read(/private/tmp/claude-*/**)"
+      ]
+    },
+    {
+      "id": "audit-skill-frontmatter",
+      "kind": "golden",
+      "fixture": "../skills/audit/SKILL.md",
+      "frontmatter_required_keys": ["name", "description"],
+      "must_contain": [
+        "name: audit",
+        "/repo:audit",
+        "./.repo-audit/"
+      ]
+    },
+    {
+      "id": "audit-skill-three-call-workflow",
+      "kind": "golden",
+      "fixture": "../skills/audit/SKILL.md",
+      "must_contain": [
+        "${CLAUDE_PLUGIN_ROOT}/skills/audit/scripts/audit.py prepare",
+        "${CLAUDE_PLUGIN_ROOT}/skills/audit/scripts/audit.py finalize",
+        "five subagents",
+        "wall-clock budget"
+      ]
+    },
+    {
+      "id": "audit-skill-benchmark-tasks-fixed",
+      "kind": "golden",
+      "fixture": "../skills/audit/SKILL.md",
+      "must_contain": [
+        "Repo walk",
+        "Bug fix",
+        "Feature add",
+        "Refactor",
+        "Write a test"
+      ]
+    },
+    {
+      "id": "audit-skill-repo-shape-fork",
+      "kind": "golden",
+      "fixture": "../skills/audit/SKILL.md",
+      "must_contain": [
+        "repo_shape",
+        "agent-harness",
+        "Evals",
+        "Skill quality",
+        "Prompt hygiene"
+      ]
+    },
+    {
+      "id": "audit-cli-subcommands-present",
+      "kind": "golden",
+      "fixture": "../skills/audit/scripts/audit.py",
+      "must_contain": [
+        "prepare",
+        "finalize",
+        "ARTIFACT_DIR_NAME = \".repo-audit\""
+      ]
+    },
+    {
+      "id": "static-checks-emits-harness-blocks",
+      "kind": "golden",
+      "fixture": "../skills/audit/scripts/static_checks.py",
+      "must_contain": [
+        "detect_repo_shape",
+        "audit_evals",
+        "audit_skill_quality",
+        "audit_prompt_hygiene"
+      ]
+    },
+    {
+      "id": "renderer-switches-on-shape",
+      "kind": "golden",
+      "fixture": "../skills/audit/scripts/render_report.py",
+      "must_contain": [
+        "render_evals",
+        "render_skill_quality",
+        "render_prompt_hygiene",
+        "agent-harness"
+      ]
+    },
+    {
+      "id": "no-codex-execution-paths",
+      "kind": "golden",
+      "fixtures": [
+        "../skills/audit/scripts/audit.py",
+        "../skills/audit/scripts/session_usage.py"
+      ],
+      "regex_must_not_match": "--surface\\s+codex"
+    }
+  ]
+}

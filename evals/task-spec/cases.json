@@ -1,0 +1,95 @@
+{
+  "item": "plugins/task-spec",
+  "triggers": {
+    "must_match_any": [
+      "draft spec",
+      "write a spec",
+      "draft a spec",
+      "/draft",
+      "produce a SPEC",
+      "produce a spec document",
+      "write a SPEC.md"
+    ],
+    "positive": [
+      "draft a spec for adding rate limiting to the public API",
+      "write a spec for the new onboarding flow",
+      "can you produce a SPEC document for the migration from Postgres 14 to 16?",
+      "/draft refactor the auth middleware to use JWTs",
+      "write a SPEC.md covering the dark-mode rollout"
+    ],
+    "negative": [
+      "implement rate limiting in the API gateway",
+      "review this pull request and flag issues",
+      "summarize the engineering all-hands notes",
+      "write a prompt that drafts release notes",
+      "what does the OpenAI guide say about reasoning effort?",
+      "audit this repo for agentic readiness"
+    ]
+  },
+  "output": [
+    {
+      "id": "claude-plugin-manifest-present",
+      "kind": "golden",
+      "fixture": "../.claude-plugin/plugin.json",
+      "must_contain": ["\"name\": \"task-spec\""]
+    },
+    {
+      "id": "draft-skill-frontmatter",
+      "kind": "golden",
+      "fixture": "../skills/draft/SKILL.md",
+      "frontmatter_required_keys": ["name", "description"],
+      "must_contain": [
+        "disable-model-invocation: true",
+        "ExitPlanMode",
+        "./.specs/<slug>.md"
+      ]
+    },
+    {
+      "id": "draft-skill-five-section-template",
+      "kind": "golden",
+      "fixture": "../skills/draft/SKILL.md",
+      "must_contain": [
+        "## 1. Objective",
+        "## 2. Context",
+        "## 3. Constraints",
+        "## 4. Success criteria & verification",
+        "## 5. Stop rules"
+      ]
+    },
+    {
+      "id": "draft-skill-token-discipline",
+      "kind": "golden",
+      "fixture": "../skills/draft/SKILL.md",
+      "must_contain": [
+        "Token discipline",
+        "No preamble",
+        "Recon is silent"
+      ]
+    },
+    {
+      "id": "draft-skill-uses-ask-user-question",
+      "kind": "golden",
+      "fixture": "../skills/draft/SKILL.md",
+      "must_contain": ["AskUserQuestion"]
+    },
+    {
+      "id": "settings-allows-specs-dir",
+      "kind": "golden",
+      "fixture": "../.claude-plugin/settings.json",
+      "must_contain": [
+        "Edit(./.specs/**)",
+        "Write(./.specs/**)",
+        "showClearContextOnPlanAccept"
+      ]
+    },
+    {
+      "id": "no-implementation-during-interview",
+      "kind": "golden",
+      "fixture": "../skills/draft/SKILL.md",
+      "must_not_contain": [
+        "Do implement during the interview"
+      ],
+      "regex_must_not_match": "(?i)implement (now|first) and"
+    }
+  ]
+}
