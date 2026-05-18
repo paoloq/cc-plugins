@@ -23,16 +23,9 @@ Skills are invoked as `/<plugin>:<skill>` — e.g. `/prompt:draft`, `/prompt:rev
 | Name | Skills | Description |
 | --- | --- | --- |
 | [✍️ prompt](plugins/prompt/) | `draft` · `guides` · `review` · `revise` | Draft, revise, and review prompts using curated guides from Anthropic, OpenAI, and Google. |
-
-## 🗂️ Layout
-
-```
-cc-plugins/
-  .claude-plugin/marketplace.json     # Marketplace catalog
-  plugins/<name>/
-    .claude-plugin/plugin.json        # Plugin manifest
-    skills/<skill>/                   # One directory per skill
-```
+| [📝 task](plugins/task/) | `draft-spec` · `plan-council` | Plan a coding task: draft a spec, then deliberate the implementation plan with Codex before handing off via `ExitPlanMode`. |
+| [🛠️ repo](plugins/repo/) | `audit` | Assess a repo's agentic readiness via static checks plus benchmark subagents; renders a navigable HTML scorecard. |
+| [🔬 code](plugins/code/) | `review` | Tools for assessing and improving source code. |
 
 ## 🧪 Evals
 
