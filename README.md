@@ -23,7 +23,7 @@ Then install any plugin below with its listed command. Skills are invoked as `/<
 | [✍️ prompt](plugins/prompt/) | `draft` · `guides` · `review` · `revise` | `/plugins install prompt@cc-plugins` | Draft, revise, and review prompts using curated guides from Anthropic, OpenAI, and Google. |
 | [📝 task](plugins/task/) | `draft-spec` · `plan-council` | `/plugins install task@cc-plugins` | Plan a coding task: draft a spec, then deliberate the implementation plan with Codex before handing off via `ExitPlanMode`. |
 | [🛠️ repo](plugins/repo/) | `audit` | `/plugins install repo@cc-plugins` | Assess a repo's agentic readiness via static checks plus benchmark subagents; renders a navigable HTML scorecard. |
-| [🔬 code](plugins/code/) | `review` | `/plugins install code@cc-plugins` | Tools for assessing and improving source code. |
+| [🔬 code](plugins/code/) | `audit` | `/plugins install code@cc-plugins` | Tools for assessing and improving source code. |
 
 ## 🧪 Evals
 

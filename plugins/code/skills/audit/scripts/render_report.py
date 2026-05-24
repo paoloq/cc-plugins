@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render a code-review HTML report.
+"""Render a code-audit HTML report.
 
 Reads a JSON findings document from --in (or stdin) and writes a
 self-contained HTML report to --out. The visual style mirrors the
@@ -201,7 +201,7 @@ ol.recs li::before { content:counter(rec); position:absolute; left:12px; top:10p
 THEME_BOOT_JS = """
 (function () {
   try {
-    var saved = localStorage.getItem('code-review-theme');
+    var saved = localStorage.getItem('code-audit-theme');
     var theme = (saved === 'light' || saved === 'dark') ? saved
       : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
     document.documentElement.setAttribute('data-theme', theme);
@@ -217,7 +217,7 @@ SCROLLSPY = """
     const cur = root.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
     const next = cur === 'light' ? 'dark' : 'light';
     root.setAttribute('data-theme', next);
-    try { localStorage.setItem('code-review-theme', next); } catch (_) {}
+    try { localStorage.setItem('code-audit-theme', next); } catch (_) {}
   });
   const links = [...document.querySelectorAll('nav.side a')];
   const sections = links.map(a => document.querySelector(a.getAttribute('href')));
@@ -288,7 +288,7 @@ def render_header(target: str, ts: datetime.datetime) -> str:
             'stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 '
             '7 7 0 0 0 21 12.79z"/></svg>')
     return (
-        f'<header class="top"><span class="repo">Code review</span>'
+        f'<header class="top"><span class="repo">Code audit</span>'
         f'<span class="path">{e(target)}</span>'
         f'<span class="ts">{e(fmt_human_datetime(ts))}</span>'
         f'<button id="theme-toggle" class="theme-toggle" type="button" '
@@ -410,12 +410,12 @@ def build_html(doc: dict) -> str:
         "<!doctype html>\n<html lang=\"en\"><head>"
         "<meta charset=\"utf-8\">"
         "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-        f"<title>Code review — {e(target)}</title>"
+        f"<title>Code audit — {e(target)}</title>"
         f"<script>{THEME_BOOT_JS}</script>"
         f"<style>{CSS}</style></head><body>"
         '<div class="app">'
         '<nav class="side" aria-label="Sections">'
-        '<div class="brand"><span class="dot"></span>code review</div>'
+        '<div class="brand"><span class="dot"></span>code audit</div>'
         f'<h1>Sections</h1><ol>{nav_html}</ol></nav>'
         f"<main>{body}</main></div>"
         f"<script>{SCROLLSPY}</script></body></html>\n"
@@ -423,11 +423,11 @@ def build_html(doc: dict) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Render a code-review HTML report.")
+    ap = argparse.ArgumentParser(description="Render a code-audit HTML report.")
     ap.add_argument("--in",  dest="inp", default="-",
                     help="findings JSON file (default: stdin)")
-    ap.add_argument("--out", default="./.code-review.html",
-                    help="output HTML path (default: ./.code-review.html)")
+    ap.add_argument("--out", default="./.code-audit.html",
+                    help="output HTML path (default: ./.code-audit.html)")
     args = ap.parse_args()
 
     if args.inp == "-":

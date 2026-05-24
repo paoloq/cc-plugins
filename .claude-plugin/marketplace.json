@@ -33,10 +33,10 @@
     {
       "name": "code",
       "source": "./plugins/code",
-      "description": "Tools for assessing and improving source code. Ships the `review` skill.",
+      "description": "Tools for assessing and improving source code. Ships the `audit` skill.",
       "version": "0.1.0",
       "category": "code-quality",
-      "tags": ["code", "review", "audit", "refactor", "quality"]
+      "tags": ["code", "audit", "refactor", "quality"]
     }
   ]
 }

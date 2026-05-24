@@ -7,5 +7,5 @@
   },
   "homepage": "https://github.com/paoloq/cc-plugins/tree/main/plugins/code",
   "license": "MIT",
-  "keywords": ["code", "review", "audit", "refactor", "quality"]
+  "keywords": ["code", "audit", "refactor", "quality"]
 }

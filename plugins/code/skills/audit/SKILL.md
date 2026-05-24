@@ -1,17 +1,17 @@
 ---
-name: review
-description: Perform a read-only assessment of a codebase (whole repo or a specified subfolder) and produce a self-contained HTML report listing prioritized pain points — bugs, security issues, anti-patterns, complexity hotspots, refactoring opportunities, dead or duplicated code, missing tests, dependency smells, performance concerns, and documentation gaps. Use when the user says "review this code", "find pain points", "audit this codebase", "what's wrong with this code", "code smells", or invokes "/code:review".
+name: audit
+description: Perform a read-only assessment of a codebase (whole repo or a specified subfolder) and produce a self-contained HTML report listing prioritized pain points — bugs, security issues, anti-patterns, complexity hotspots, refactoring opportunities, dead or duplicated code, missing tests, dependency smells, performance concerns, and documentation gaps. Use when the user says "audit this code", "audit this codebase", "find pain points", "what's wrong with this code", "code smells", or invokes "/code:audit".
 argument-hint: "[path] [--focus <category>] [--out <file>]"
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 
-You are performing a **read-only code review** of a target path. You write nothing to the codebase. The only file you produce is the **HTML report** rendered by this skill's script.
+You are performing a **read-only code audit** of a target path. You write nothing to the codebase. The only file you produce is the **HTML report** rendered by this skill's script.
 
 ## Inputs
 
 - **path** — optional positional. Defaults to `.` (current working directory). May be a repo root or a subfolder.
 - **--focus <category>** — optional. One of: `bugs`, `security`, `anti-patterns`, `complexity`, `refactor`, `dead-code`, `tests`, `dependencies`, `performance`, `docs`. When set, deprioritize other categories.
-- **--out <file>** — optional. Output HTML path. Defaults to `./.code-review.html`.
+- **--out <file>** — optional. Output HTML path. Defaults to `./.code-audit.html`.
 
 ## Hard rules
 
@@ -113,12 +113,12 @@ Rules:
 Pipe the JSON into the renderer in a single `Bash` call:
 
 ```
-cat <<'JSON' | ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/render_report.py --out <out-path>
+cat <<'JSON' | ${CLAUDE_PLUGIN_ROOT}/skills/audit/scripts/render_report.py --out <out-path>
 { ...the JSON document... }
 JSON
 ```
 
-- `<out-path>` is the user's `--out` value or `./.code-review.html` by default.
+- `<out-path>` is the user's `--out` value or `./.code-audit.html` by default.
 - The script prints the resolved output path on success. Capture it.
 - The script has the executable bit set and uses `#!/usr/bin/env python3` — Claude Code's "Always allow" attaches to this exact path, not to `python3 *`.
 
