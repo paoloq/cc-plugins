@@ -1,0 +1,11 @@
+{
+  "name": "docs",
+  "version": "0.1.0",
+  "description": "Generate and maintain a hierarchy of Claude Code onboarding files (a tiny root CLAUDE.md plus on-demand per-area CLAUDE.md files) for a target codebase via the `generate` skill (/docs:generate).",
+  "author": {
+    "name": "Paolo Arduin"
+  },
+  "homepage": "https://github.com/paoloq/cc-plugins/tree/main/plugins/docs",
+  "license": "MIT",
+  "keywords": ["docs", "onboarding", "agents", "map"]
+}

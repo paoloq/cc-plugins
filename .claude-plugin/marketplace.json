@@ -37,6 +37,14 @@
       "version": "0.1.0",
       "category": "code-quality",
       "tags": ["code", "audit", "refactor", "quality"]
+    },
+    {
+      "name": "docs",
+      "source": "./plugins/docs",
+      "description": "Generate and maintain Claude Code onboarding docs (CLAUDE.md + docs/ai/*) for a target codebase via the `generate` skill (/docs:generate).",
+      "version": "0.1.0",
+      "category": "documentation",
+      "tags": ["docs", "onboarding", "claude-md", "agents", "map"]
     }
   ]
 }
